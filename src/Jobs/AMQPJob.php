@@ -29,18 +29,19 @@ class AMQPJob extends Job implements \Illuminate\Contracts\Queue\Job
      */
     private $channel;
 
+    private $handler;
+
     /**
      * @param Container $container
-     * @param string    $queue
+     * @param string $queue
      * @param           $channel
-     * @param string    $amqpMessage
+     * @param string $amqpMessage
      */
-    public function __construct($container, $queue, $channel, $amqpMessage)
-    {
-        $this->container = $container;
-        $this->queue = $queue;
+    public function __construct($container, $queue, $channel, $amqpMessage, $handler) {
+        $this->container   = $container;
+        $this->queue       = $queue;
         $this->amqpMessage = $amqpMessage;
-        $this->channel = $channel;
+        $this->channel     = $channel;
     }
 
     /**
@@ -48,8 +49,7 @@ class AMQPJob extends Job implements \Illuminate\Contracts\Queue\Job
      *
      * @return string
      */
-    public function getRawBody()
-    {
+    public function getRawBody() {
         return $this->amqpMessage->body;
     }
 
@@ -60,18 +60,17 @@ class AMQPJob extends Job implements \Illuminate\Contracts\Queue\Job
      *
      * @return void
      */
-    public function release($delay = 0)
-    {
+    public function release($delay = 0) {
         $this->delete();
 
         $body = $this->amqpMessage->body;
         $body = json_decode($body, true);
 
         $body['attempts'] = $this->attempts() + 1;
-        $job = $body['job'];
+        $job              = $body['job'];
 
         //if retry_after option is set use it on failure instead of traditional delay
-        if(isset($body['data']['retryAfter']) && $body['data']['retryAfter'] > 0)
+        if (isset($body['data']['retryAfter']) && $body['data']['retryAfter'] > 0)
             $delay = $body['data']['retryAfter'];
 
         /** @var QueueContract $queue */
@@ -91,8 +90,7 @@ class AMQPJob extends Job implements \Illuminate\Contracts\Queue\Job
      *
      * @return void
      */
-    public function delete()
-    {
+    public function delete() {
         parent::delete();
         $this->channel->basic_ack($this->amqpMessage->delivery_info['delivery_tag']);
     }
@@ -102,8 +100,7 @@ class AMQPJob extends Job implements \Illuminate\Contracts\Queue\Job
      *
      * @return int
      */
-    public function attempts()
-    {
+    public function attempts() {
         $body = json_decode($this->amqpMessage->body, true);
 
         return isset($body['attempts']) ? $body['attempts'] : 0;
@@ -114,8 +111,7 @@ class AMQPJob extends Job implements \Illuminate\Contracts\Queue\Job
      *
      * @return string
      */
-    public function getQueue()
-    {
+    public function getQueue() {
         return $this->queue;
     }
 
@@ -124,13 +120,25 @@ class AMQPJob extends Job implements \Illuminate\Contracts\Queue\Job
      *
      * @return string
      */
-    public function getJobId()
-    {
+    public function getJobId() {
         try {
             return $this->amqpMessage->get('message_id');
-        } catch (\OutOfBoundsException $exception){
+        } catch (\OutOfBoundsException $exception) {
             return null;
         }
+    }
+
+    public function payload() {
+        $payload = parent::payload();
+
+        if (!isset($payload['job']) && $this->handler) {
+            $payload = [
+                'job' => $this->handler,
+                'data' => $payload
+            ];
+        }
+
+        return $payload;
     }
 
 }

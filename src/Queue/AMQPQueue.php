@@ -72,6 +72,7 @@ class AMQPQueue extends Queue implements QueueContract
      * @var int
      */
     private $retryAfter;
+    private $handler;
 
     /**
      * @param AMQPStreamConnection $connection
@@ -99,7 +100,8 @@ class AMQPQueue extends Queue implements QueueContract
         $exchangeName = '',
         $exchangeType = null,
         $exchangeFlags = [],
-        $retryAfter = 0
+        $retryAfter = 0,
+        $handler = null
     ) {
         $this->connection = $connection;
         $this->defaultQueueName = $defaultQueueName ?: 'default';
@@ -367,7 +369,7 @@ class AMQPQueue extends Queue implements QueueContract
         $envelope = $this->channel->basic_get($queue);
 
         if ($envelope instanceof AMQPMessage) {
-            return new AMQPJob($this->container, $queue, $this->channel, $envelope);
+            return new AMQPJob($this->container, $queue, $this->channel, $envelope, $this->handler);
         }
 
         return null;
