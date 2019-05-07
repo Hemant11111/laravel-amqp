@@ -112,6 +112,7 @@ class AMQPQueue extends Queue implements QueueContract
         $this->exchangeName = $exchangeName;
         $this->channel = $connection->channel($this->defaultChannelId);
         $this->retryAfter = $retryAfter;
+        $this->handler = $handler;
 
         if ($exchangeName !== null) {
             $this->declareExchange($exchangeName, $exchangeType, $exchangeFlags);
