@@ -21,14 +21,15 @@ class AmqpConnector implements ConnectorInterface
      *
      * @return \Illuminate\Queue\Queue
      */
-    public function connect(array $config)
-    {
+    public function connect(array $config) {
         $connection = new AMQPSSLConnection(
             $config['host'],
             $config['port'],
             $config['user'],
             $config['password'],
-            isset($config['vhost']) ? $config['vhost'] : '/');
+            isset($config['vhost']) ? $config['vhost'] : '/',
+            ['capath'      => '/etc/ssl/certs',
+             'verify_peer' => 'true']);
 
 //        $connection = new AMQPStreamConnection(
 //            $config['host'],
